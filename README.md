@@ -1,4 +1,10 @@
-# Mina Puma
+# Next Generation Mina Puma
+
+I refactor mina-puma( https://github.com/untitledkingdom/mina-puma ) because of the below:
+
+1. `phased_restart` and `restart` need start puma correctly when puma is down.
+2. `phased_restart` and `restart` should confirm puma restart successfully.
+3. check `puma_pid` instead of `pumactl_socket`.
 
 [Mina](https://github.com/nadarei/mina) tasks for handle with
 [Puma](https://github.com/puma/puma).
@@ -62,7 +68,7 @@ OR you can set other directories by setting follow variables:
 Then:
 
 ```
-$ mina puma:start
+$ bundle exec mina puma:start
 ```
 
 ## Example
