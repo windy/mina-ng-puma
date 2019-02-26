@@ -57,7 +57,7 @@ namespace :puma do
   desc 'Restart puma (hard restart)'
   task :hard_restart do
     comment "Restart Puma -- hard..."
-    #invoke 'puma:stop'
+    invoke 'puma:stop'
     wait_quit_or_force_quit_command
     invoke 'puma:start'
   end
