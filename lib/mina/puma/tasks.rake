@@ -52,6 +52,7 @@ namespace :puma do
   task :phased_restart do
     comment "Restart Puma -- phased..."
     pumactl_restart_command 'phased-restart'
+    wait_phased_restart_successful_command
   end
 
   desc 'Restart puma (hard restart)'
@@ -104,6 +105,43 @@ namespace :puma do
         else
           cd #{fetch(:puma_root_path)} && #{fetch(:puma_cmd)} -q -d -e #{fetch(:puma_env)} -b "unix://#{fetch(:puma_socket)}" #{puma_port_option} -S #{fetch(:puma_state)} --pidfile #{fetch(:puma_pid)} --control 'unix://#{fetch(:pumactl_socket)}' --redirect-stdout "#{fetch(:puma_stdout)}" --redirect-stderr "#{fetch(:puma_stderr)}"
         fi
+      fi
+    }
+    command cmd
+  end
+
+  def wait_phased_restart_successful_command
+    cmd = %{
+      started_flag=false
+      default_times=120
+      times=$default_times
+      cd #{fetch(:puma_root_path)}
+      echo "Waiting phased-restart finish( default: $default_times seconds)..."
+      while [ $times -gt 0 ]; do
+        if [ -e "#{fetch(:puma_config)}" ]; then
+          # Just output the old workers number
+          #{fetch(:pumactl_cmd)} -F #{fetch(:puma_config)} stats | grep -E -o '"old_workers": [0-9]+'
+          if #{fetch(:pumactl_cmd)} -F #{fetch(:puma_config)} stats | grep '"old_workers": 0';then
+            started_flag=true
+            break
+          fi
+        else
+          # Just output the old workers number
+          #{fetch(:pumactl_cmd)} -S #{fetch(:puma_state)} -C "unix://#{fetch(:pumactl_socket)}" --pidfile #{fetch(:puma_pid)} stats | grep -E -o '"old_workers": [0-9]+'
+          if #{fetch(:pumactl_cmd)} -S #{fetch(:puma_state)} -C "unix://#{fetch(:pumactl_socket)}" --pidfile #{fetch(:puma_pid)} stats | grep '"old_workers": 0'; then
+            started_flag=true
+            break
+          fi
+        fi
+        sleep 1
+        times=$[$times -1]
+      done
+
+      if [ $started_flag == false ]; then
+        echo "Waiting phased-restart timeout(default: $default_times seconds), please check it!!!"
+        exit 1
+      else
+        echo "Phased-restart have finished, enjoy it!"
       fi
     }
     command cmd
