@@ -50,17 +50,34 @@ namespace :puma do
 
   desc 'Restart puma (phased restart)'
   task :phased_restart do
-    comment "Restart Puma -- phased..."
+    comment "Restart Puma -- phased mode..."
     pumactl_restart_command 'phased-restart'
     wait_phased_restart_successful_command
   end
 
   desc 'Restart puma (hard restart)'
   task :hard_restart do
-    comment "Restart Puma -- hard..."
+    comment "Restart Puma -- hard mode..."
     invoke 'puma:stop'
     wait_quit_or_force_quit_command
     invoke 'puma:start'
+  end
+
+  desc 'Restart puma (smart restart)'
+  task :smart_restart do
+    comment "Restart Puma -- smart mode..."
+    comment "Trying phased restart..."
+    pumactl_restart_command 'phased-restart'
+    hard_restart_script = %{
+      echo "Phased-restart have failed, using hard-restart mode instead..." \n
+    }
+    # TODO: refactor it when we have better method
+    # hacking in mina commands.process to get hard_restart script
+    on :puma_smart_restart_tmp do
+      invoke 'puma:hard_restart'
+      hard_restart_script += commands.process
+    end
+    wait_phased_restart_successful_command(60, hard_restart_script)
   end
 
   desc 'Get status of puma'
@@ -110,10 +127,15 @@ namespace :puma do
     command cmd
   end
 
-  def wait_phased_restart_successful_command
+  def wait_phased_restart_successful_command(default_times = 120, exit_script = nil)
+    default_exit_script = %{
+      echo "Please check it manually!!!"
+      exit 1
+    }
+    exit_script ||= default_exit_script
     cmd = %{
       started_flag=false
-      default_times=120
+      default_times=#{default_times}
       times=$default_times
       cd #{fetch(:puma_root_path)}
       echo "Waiting phased-restart finish( default: $default_times seconds)..."
@@ -138,8 +160,8 @@ namespace :puma do
       done
 
       if [ $started_flag == false ]; then
-        echo "Waiting phased-restart timeout(default: $default_times seconds), please check it!!!"
-        exit 1
+        echo "Waiting phased-restart timeout(default: $default_times seconds)..."
+        #{exit_script}
       else
         echo "Phased-restart have finished, enjoy it!"
       fi

@@ -4,13 +4,14 @@ I refactor mina-puma( https://github.com/untitledkingdom/mina-puma ) because of 
 
 1. `phased_restart` and `restart` need start puma correctly when puma is down.
 2. `phased_restart` and `restart` should confirm puma restart successfully.
-3. check `puma_pid` instead of `pumactl_socket`.
+3. Add `smart_restart` mode, it will first try to do `phased_restart`, when failed, using `hard_restart` instead.
 
 [Mina](https://github.com/nadarei/mina) tasks for handle with
 [Puma](https://github.com/puma/puma).
 
 This gem provides several mina tasks:
 
+    mina puma:smart_restart   # Restart puma ( phased_restart then hard_restart )
     mina puma:phased_restart  # Restart puma (using phased restart)
     mina puma:hard_restart    # Restart puma (using stop, then start)
     mina puma:restart         # Restart puma (using pumactl)
@@ -20,7 +21,7 @@ This gem provides several mina tasks:
 
 ## Installation
 
-Add this line to your application's Gemfile:
+Add this line to your Rails application's Gemfile:
 
     gem 'mina-ng-puma', require: false
 
@@ -28,11 +29,10 @@ And then execute:
 
     $ bundle
 
-Or install it yourself as:
+Note: You should remove `mina-puma` gem to ignore namespace conflict if you have install it before.
 
-    $ gem install mina-ng-puma
+    $ gem uninstall mina-puma
 
-Note: by just including this gem, does not mean your development server will be Puma, for that, you need explicitly add `gem 'puma'` to your Gemfile.
 
 ## Usage
 
@@ -86,7 +86,7 @@ task :deploy do
 
     on :launch do
       ...
-      invoke :'puma:phased_restart'
+      invoke :'puma:smart_restart'
     end
   end
 end
